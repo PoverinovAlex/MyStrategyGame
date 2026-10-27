@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://jhs6t2waiw0t"]
+
+[ext_resource type="Script" uid="uid://bok728p48ix8n" path="res://Scripts/Menu/SinglePlayButton.cs" id="1_tt5f1"]
+[ext_resource type="Script" uid="uid://b5onr0if2btbn" path="res://Scripts/Menu/ExitButton.cs" id="2_853f1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8ga33"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 20.0
+content_margin_bottom = 20.0
+bg_color = Color(0, 0, 0.39215687, 0.4627451)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="Control" type="Control" unique_id=653633514]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1467082233]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer" unique_id=1293402681]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_8ga33")
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="MarginContainer/PanelContainer" unique_id=801037890]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="PlayButton" type="Button" parent="MarginContainer/PanelContainer/VBoxContainer2" unique_id=1424873603]
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+offset_transform_enabled = true
+text = "Single Play"
+script = ExtResource("1_tt5f1")
+
+[node name="ExitButton" type="Button" parent="MarginContainer/PanelContainer/VBoxContainer2" unique_id=1442156267]
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Exit"
+script = ExtResource("2_853f1")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/PanelContainer" unique_id=46695930]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="Label" type="Label" parent="MarginContainer/PanelContainer/VBoxContainer" unique_id=2139550879]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Agdaemon: The Legends of Heroes"
+horizontal_alignment = 1

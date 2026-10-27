@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://cpfos71l2iuax"]
+
+[ext_resource type="Script" uid="uid://duvgrlojfu2bb" path="res://Scripts/Objects/Grid/Cell.cs" id="1_efq80"]
+
+[node name="Cell" type="Node2D" unique_id=1405566443]
+script = ExtResource("1_efq80")
+
+[node name="Border" type="ColorRect" parent="." unique_id=1984703982]
+custom_minimum_size = Vector2(64, 64)
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="WhiteRect" type="ColorRect" parent="Border" unique_id=84061223]
+custom_minimum_size = Vector2(58, 58)
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 62.0
+offset_bottom = 62.0
+metadata/_edit_use_anchors_ = true
