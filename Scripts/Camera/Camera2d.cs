@@ -5,20 +5,15 @@ public partial class Camera2d : Camera2D
 {
 	[Export] private Grid _grid;
 	
-	[Export] public float PanSpeed = 1000f; // Скорость на WASD
-	[Export] public float ZoomSpeed = 0.1f; // Скорость зума (СКМ)
-	[Export] public float MinZoom = 0.9f;   // Максимальное отдаление
-	[Export] public float MaxZoom = 2.5f;   // Максимальное приближение
+	[Export] public float PanSpeed = 1000f;
+	[Export] public float ZoomSpeed = 0.1f;
+	[Export] public float MinZoom = 0.9f;
+	[Export] public float MaxZoom = 2.5f;
 	
 	private Vector2 _dragStartMousePos;
 	private Vector2 _dragStartCameraPos;
 	private bool _isDragging = false;
-	
-	//borders
-	private float _limitLeft;
-	private float _limitTop;
-	private float _limitRight;
-	private float _limitBottom;
+	private Vector2 _lastMousePos;
 
 	public override void _Ready()
 	{
@@ -29,13 +24,13 @@ public partial class Camera2d : Camera2D
 	{
 		if (_grid == null) return;
 
-		// Устанавливаем лимиты движения камеры (чтобы не уезжала за поле)
-		_limitLeft = (int)_grid.GlobalTopLeft.X - 1.0f;
-		_limitTop = (int)_grid.GlobalTopLeft.Y - 1.0f;
-		_limitRight = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X + 1.0f);
-		_limitBottom = (int)(_grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y + 1.0f);
+		// Используем встроенные лимиты Godot
+		LimitLeft = (int)_grid.GlobalTopLeft.X - 600;
+		LimitTop = (int)_grid.GlobalTopLeft.Y - 600;
+		LimitRight = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X) - 600;
+		LimitBottom = (int)(_grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y) - 600;
 		
-		GD.Print($"Лимиты камеры обновлены: {_limitLeft}, {_limitTop}, {_limitRight}, {_limitBottom}");
+		GD.Print($"Лимиты камеры обновлены: {LimitLeft}, {LimitTop}, {LimitRight}, {LimitBottom}");
 	}
 
 	public override void _Process(double delta)
@@ -48,24 +43,19 @@ public partial class Camera2d : Camera2D
 	{
 		if (@event is InputEventMouseButton mouseButton)
 		{
-			// Колесико вверх — приближаем (Zoom уменьшается)
 			if (mouseButton.ButtonIndex == MouseButton.WheelUp && mouseButton.Pressed)
 			{
 				Zoom += new Vector2(ZoomSpeed, ZoomSpeed);
 				ClampZoom();
-				GD.Print(Zoom);
 			}
-			// Колесико вниз — отдаляем (Zoom увеличивается)
 			else if (mouseButton.ButtonIndex == MouseButton.WheelDown && mouseButton.Pressed)
 			{
 				Zoom -= new Vector2(ZoomSpeed, ZoomSpeed);
 				ClampZoom();
-				GD.Print(Zoom);
 			}
 		}
 	}
 
-	// 1. Движение на WASD / Стрелки
 	private void HandleKeyboardMovement(float delta)
 	{
 		Vector2 direction = Vector2.Zero;
@@ -77,50 +67,61 @@ public partial class Camera2d : Camera2D
 
 		if (direction != Vector2.Zero)
 		{
-			// Двигаем камеру. В Godot 4 Position камеры - это её центр, поэтому просто прибавляем вектор.
-			// Умножаем на Zoom.X, чтобы скорость не зависела от масштаба.
 			Position += direction.Normalized() * PanSpeed * delta * Zoom.X;
+			
+			// Округляем позицию, чтобы не было субпиксельной ряби
+			Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
 		}
 	}
+	
+	//private void HandleMiddleMouseDrag()
+	//{
+		//if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
+		//{
+		//// Получаем текущую позицию мыши на экране (а не в мире!)
+			//Vector2 currentMouseScreenPos = GetViewport().GetMousePosition();
+//
+			//if (!_isDragging)
+			//{
+				//_isDragging = true;
+			//}
+			//else
+			//{
+			//// Вычисляем, насколько мышь сдвинулась с прошлого кадра
+				//Vector2 mouseDelta = currentMouseScreenPos - _lastMousePos;
+			//
+			//// Двигаем камеру в противоположную сторону (умножаем на зум, чтобы скорость совпадала)
+				//Position -= mouseDelta;
+			//
+			//// Округляем ТОЛЬКО позицию камеры (без сдвига мыши)
+				//Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
+			//}
+		//
+			//_lastMousePos = currentMouseScreenPos;
+		//}
+		//else
+		//{
+			//_isDragging = false;
+		//}
+	//}
 	
 	private void HandleMiddleMouseDrag()
 	{
 		if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
 		{
+			
 			if (!_isDragging)
 			{
-				// Запоминаем точку старта
 				_isDragging = true;
-				_dragStartMousePos = GetGlobalMousePosition();
+				_dragStartMousePos = GetViewport().GetMousePosition();
 				_dragStartCameraPos = Position;
 			}
 			else
 			{
-				// Вычисляем разницу и двигаем камеру в противоположную сторону
-				Vector2 currentMousePos = GetGlobalMousePosition();
+				Vector2 currentMousePos = GetViewport().GetMousePosition();
 				Vector2 difference = _dragStartMousePos - currentMousePos;
 				
 				Position = _dragStartCameraPos + difference;
-				
-			Position = _dragStartCameraPos + difference;
-			
-			// Получаем текущую позицию в переменную
-			Vector2 clampedPos = Position;
-
-			// Ограничиваем по Y
-			if (clampedPos.Y > _limitBottom)
-				clampedPos.Y = _limitBottom;
-			if (clampedPos.Y < _limitTop)
-				clampedPos.Y = _limitTop;
-				
-			// Ограничиваем по X (исправлены опечатки _limitBottom -> _limitRight и < _limitRight -> < _limitLeft)
-			if (clampedPos.X > _limitRight)
-				clampedPos.X = _limitRight;
-			if (clampedPos.X < _limitLeft)
-				clampedPos.X = _limitLeft;
-
-			// Присваиваем обратно
-			Position = clampedPos;
 			}
 		}
 		else
@@ -128,10 +129,36 @@ public partial class Camera2d : Camera2D
 			_isDragging = false;
 		}
 	}
+	
+	//private void HandleMiddleMouseDrag()
+	//{
+		//if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
+		//{
+			//if (!_isDragging)
+			//{
+				//_isDragging = true;
+				//_dragStartMousePos = GetGlobalMousePosition();
+				//_dragStartCameraPos = Position;
+			//}
+			//else
+			//{
+				//Vector2 currentMousePos = GetGlobalMousePosition();
+				//Vector2 difference = _dragStartMousePos - currentMousePos;
+				//
+				//Position = _dragStartCameraPos + difference;
+				//
+				//// Округляем позицию, чтобы не было субпиксельной ряби
+				//Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
+			//}
+		//}
+		//else
+		//{
+			//_isDragging = false;
+		//}
+	//}
 
 	private void ClampZoom()
 	{
-		// Ограничиваем зум, чтобы не приблизиться/отдалиться слишком сильно
 		Zoom = new Vector2(
 			Mathf.Clamp(Zoom.X, MinZoom, MaxZoom),
 			Mathf.Clamp(Zoom.Y, MinZoom, MaxZoom)
