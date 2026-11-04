@@ -13,24 +13,51 @@ public partial class Camera2d : Camera2D
 	private Vector2 _dragStartMousePos;
 	private Vector2 _dragStartCameraPos;
 	private bool _isDragging = false;
-	private Vector2 _lastMousePos;
 
 	public override void _Ready()
 	{
 		PositionSmoothingEnabled = false;
 	}
 
-	public void UpdateCameraLimits()
+	public void SetupCamera()
 	{
 		if (_grid == null) return;
 
-		// Используем встроенные лимиты Godot
-		LimitLeft = (int)_grid.GlobalTopLeft.X - 600;
-		LimitTop = (int)_grid.GlobalTopLeft.Y - 600;
-		LimitRight = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X) - 600;
-		LimitBottom = (int)(_grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y) - 600;
+		// Ставим камеру ровно в центр сетки (используем GlobalPosition)
+		Vector2 gridCenter = _grid.GlobalTopLeft + (_grid.FieldSizeInPixels / 2f);
+		GlobalPosition = gridCenter;
 		
-		GD.Print($"Лимиты камеры обновлены: {LimitLeft}, {LimitTop}, {LimitRight}, {LimitBottom}");
+		// Задаем базовый зум
+		Zoom = new Vector2(0.9f, 0.9f);
+		
+		UpdateDynamicLimits();
+	}
+
+	public void UpdateDynamicLimits()
+	{
+		if (_grid == null) return;
+
+		Vector2 screenSize = GetViewportRect().Size;
+		float halfScreenWidth = screenSize.X / 2f / Zoom.X;
+		float halfScreenHeight = screenSize.Y / 2f / Zoom.Y;
+
+		LimitLeft = (int)(_grid.GlobalTopLeft.X - halfScreenWidth);
+		LimitRight = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X + halfScreenWidth);
+		LimitTop = (int)(_grid.GlobalTopLeft.Y - halfScreenHeight);
+		LimitBottom = (int)(_grid.GlobalTopLeft.Y - _grid.FieldSizeInPixels.Y - halfScreenHeight);
+
+		// Защита от инверсии лимитов
+		if (LimitLeft > LimitRight)
+		{
+			LimitLeft = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X / 2f);
+			LimitRight = LimitLeft;
+		}
+		if (LimitTop > LimitBottom)
+		{
+			LimitTop = (int)(_grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y / 2f);
+			LimitBottom = LimitTop;
+		}
+		GD.Print($"Camera Limits: LimitLeft = {LimitLeft}, LimitRight = {LimitRight}, LimitTop = {LimitTop}, LimitBottom = {LimitBottom}");
 	}
 
 	public override void _Process(double delta)
@@ -67,61 +94,27 @@ public partial class Camera2d : Camera2D
 
 		if (direction != Vector2.Zero)
 		{
-			Position += direction.Normalized() * PanSpeed * delta * Zoom.X;
-			
-			// Округляем позицию, чтобы не было субпиксельной ряби
-			Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
+			// Используем GlobalPosition
+			GlobalPosition += direction.Normalized() * PanSpeed * delta * Zoom.X;
 		}
 	}
-	
-	//private void HandleMiddleMouseDrag()
-	//{
-		//if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
-		//{
-		//// Получаем текущую позицию мыши на экране (а не в мире!)
-			//Vector2 currentMouseScreenPos = GetViewport().GetMousePosition();
-//
-			//if (!_isDragging)
-			//{
-				//_isDragging = true;
-			//}
-			//else
-			//{
-			//// Вычисляем, насколько мышь сдвинулась с прошлого кадра
-				//Vector2 mouseDelta = currentMouseScreenPos - _lastMousePos;
-			//
-			//// Двигаем камеру в противоположную сторону (умножаем на зум, чтобы скорость совпадала)
-				//Position -= mouseDelta;
-			//
-			//// Округляем ТОЛЬКО позицию камеры (без сдвига мыши)
-				//Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
-			//}
-		//
-			//_lastMousePos = currentMouseScreenPos;
-		//}
-		//else
-		//{
-			//_isDragging = false;
-		//}
-	//}
-	
+
 	private void HandleMiddleMouseDrag()
 	{
 		if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
 		{
-			
 			if (!_isDragging)
 			{
 				_isDragging = true;
 				_dragStartMousePos = GetViewport().GetMousePosition();
-				_dragStartCameraPos = Position;
+				_dragStartCameraPos = GlobalPosition; // Запоминаем GlobalPosition
 			}
 			else
 			{
 				Vector2 currentMousePos = GetViewport().GetMousePosition();
 				Vector2 difference = _dragStartMousePos - currentMousePos;
 				
-				Position = _dragStartCameraPos + difference;
+				GlobalPosition = _dragStartCameraPos + difference; // И двигаем GlobalPosition
 			}
 		}
 		else
@@ -130,38 +123,13 @@ public partial class Camera2d : Camera2D
 		}
 	}
 	
-	//private void HandleMiddleMouseDrag()
-	//{
-		//if (Input.IsMouseButtonPressed(MouseButton.Middle) || Input.IsMouseButtonPressed(MouseButton.Right))
-		//{
-			//if (!_isDragging)
-			//{
-				//_isDragging = true;
-				//_dragStartMousePos = GetGlobalMousePosition();
-				//_dragStartCameraPos = Position;
-			//}
-			//else
-			//{
-				//Vector2 currentMousePos = GetGlobalMousePosition();
-				//Vector2 difference = _dragStartMousePos - currentMousePos;
-				//
-				//Position = _dragStartCameraPos + difference;
-				//
-				//// Округляем позицию, чтобы не было субпиксельной ряби
-				//Position = new Vector2(Mathf.Round(Position.X), Mathf.Round(Position.Y));
-			//}
-		//}
-		//else
-		//{
-			//_isDragging = false;
-		//}
-	//}
-
 	private void ClampZoom()
 	{
 		Zoom = new Vector2(
 			Mathf.Clamp(Zoom.X, MinZoom, MaxZoom),
 			Mathf.Clamp(Zoom.Y, MinZoom, MaxZoom)
 		);
+		
+		UpdateDynamicLimits(); 
 	}
 }

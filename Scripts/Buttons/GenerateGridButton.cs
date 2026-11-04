@@ -12,7 +12,7 @@ public partial class GenerateGridButton : Button
 		_grid.GenerateGrid();
 		// Находим камеру на сцене и обновляем её лимиты
 		var cam = GetNodeOrNull<Camera2d>("/root/Main/Camera2D");
-		if (cam != null) cam.UpdateCameraLimits();
+		if (cam != null) cam.SetupCamera();
 		else GD.Print("Not found!");
 		Disabled = true;
 		Visible = false;
