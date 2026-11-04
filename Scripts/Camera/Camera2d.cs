@@ -10,9 +10,13 @@ public partial class Camera2d : Camera2D
 	[Export] public float MinZoom = 0.9f;
 	[Export] public float MaxZoom = 2.5f;
 	
+	[Export] public float MarginOutside = 100f;
+	
 	private Vector2 _dragStartMousePos;
 	private Vector2 _dragStartCameraPos;
 	private bool _isDragging = false;
+	
+	private float _minX, _maxX, _minY, _maxY;
 
 	public override void _Ready()
 	{
@@ -33,37 +37,43 @@ public partial class Camera2d : Camera2D
 		UpdateDynamicLimits();
 	}
 
-	public void UpdateDynamicLimits()
-	{
-		if (_grid == null) return;
-
-		Vector2 screenSize = GetViewportRect().Size;
-		float halfScreenWidth = screenSize.X / 2f / Zoom.X;
-		float halfScreenHeight = screenSize.Y / 2f / Zoom.Y;
-
-		LimitLeft = (int)(_grid.GlobalTopLeft.X - halfScreenWidth);
-		LimitRight = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X + halfScreenWidth);
-		LimitTop = (int)(_grid.GlobalTopLeft.Y - halfScreenHeight);
-		LimitBottom = (int)(_grid.GlobalTopLeft.Y - _grid.FieldSizeInPixels.Y - halfScreenHeight);
-
-		// Защита от инверсии лимитов
-		if (LimitLeft > LimitRight)
-		{
-			LimitLeft = (int)(_grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X / 2f);
-			LimitRight = LimitLeft;
-		}
-		if (LimitTop > LimitBottom)
-		{
-			LimitTop = (int)(_grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y / 2f);
-			LimitBottom = LimitTop;
-		}
-		GD.Print($"Camera Limits: LimitLeft = {LimitLeft}, LimitRight = {LimitRight}, LimitTop = {LimitTop}, LimitBottom = {LimitBottom}");
-	}
-
 	public override void _Process(double delta)
 	{
 		HandleKeyboardMovement((float)delta);
 		HandleMiddleMouseDrag();
+
+		// Принудительно удерживаем GlobalPosition центра камеры в рассчитанных рамках
+		GlobalPosition = new Vector2(
+			Mathf.Clamp(GlobalPosition.X, _minX - MarginOutside, _maxX + MarginOutside),
+			Mathf.Clamp(GlobalPosition.Y,  _minY - MarginOutside, _maxY + MarginOutside)
+		);
+	}
+
+	
+	public void UpdateDynamicLimits()
+	{
+		if (_grid == null) return;
+
+		// 1. Ваша логика вычисления половины видимой области
+		Vector2 screenSize = GetViewportRect().Size;
+		float halfScreenWidth = screenSize.X / 2f / Zoom.X;
+		float halfScreenHeight = screenSize.Y / 2f / Zoom.Y;
+
+		// 2. Границы карты
+		float mapMinX = _grid.GlobalTopLeft.X;
+		float mapMaxX = _grid.GlobalTopLeft.X + _grid.FieldSizeInPixels.X;
+		float mapMinY = _grid.GlobalTopLeft.Y;
+		float mapMaxY = _grid.GlobalTopLeft.Y + _grid.FieldSizeInPixels.Y;
+
+		// 3. Вычисляем, где может находиться центр камеры
+		_minX = mapMinX + halfScreenWidth;
+		_maxX = mapMaxX - halfScreenWidth;
+		_minY = mapMinY + halfScreenHeight;
+		_maxY = mapMaxY - halfScreenHeight;
+
+		// 4. Защита (если карта меньше экрана)
+		if (_minX > _maxX) { _minX = _maxX = (mapMinX + mapMaxX) / 2f; }
+		if (_minY > _maxY) { _minY = _maxY = (mapMinY + mapMaxY) / 2f; }
 	}
 	
 	public override void _UnhandledInput(InputEvent @event)
